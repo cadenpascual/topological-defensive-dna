@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr     
 import ot   
-from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein, emd
+from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein, emd, fused_gromov_wasserstein
 
 # JSON -> Tensor (3D array: Moment, Players, (x,y) Coords)
 def event_to_tensor(event, max_frames=None):
@@ -69,7 +69,7 @@ class DistanceProfile:
 
         return dist_source, dist_target
 
-    def compute_W_matrix(X, Y, gw = gromov_wasserstein):
+    def compute_W_matrix(X, Y):
         """
         Computes W(i,j) for all i ∈ [n], j ∈ [m] as defined in the equation.
 
@@ -88,13 +88,20 @@ class DistanceProfile:
         W = np.zeros((n, m))
 
         # Calculate D(i, j) which is the Gromov-Wasserstein distance between the distributions of distances
+
         for i in range(n):
             Xi_distances = X_dists[i]  # vector of length n
             for j in range(m):
                 Yj_distances = Y_dists[j]  # vector of length m
 
                 # Gromov-Wasserstein between the two empirical distributions
-                W[i, j] = gw(Xi_distances, Yj_distances)
+                C1 = ot.dist(Xi_distances)
+                C2 = ot.dist(Yj_distances)
+                M = ot.dist(X[i:i+1], Y[j:j+1])  # cost matrix between single points
+                p = ot.unif(n)
+                q = ot.unif(m)
+                Gwg, logw = fused_gromov_wasserstein(M, C1, C2, p, q, loss_fun="square_loss", alpha=1e-3, verbose=True, log=True)
+                W[i, j] = Gwg
 
         map_matrix = emd(np.ones(n) / n, np.ones(m) / m, W)
 
