@@ -4,6 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 from py7zr import SevenZipFile
 
+# not working rn
 DATA_DIR = "nba_tracking_7z"
 TEMP_DIR = "temp_json"
 
